@@ -57,7 +57,15 @@ class PostCreate(BaseModel):
         content: Annotated[str, Form(min_length=10)],
         tags: Annotated[Optional[List[str]], Form()] = None,
     ):
-        tag_objs = [Tag(name=t) for t in (tags or [])]
+        # Con FormData los tags pueden llegar como "python, fastapi":
+        # se separan antes de validar cada uno.
+        names = []
+        for raw in tags or []:
+            for part in raw.split(","):
+                name = part.strip().lower()
+                if name and name not in names:
+                    names.append(name)
+        tag_objs = [Tag(name=t) for t in names]
         return cls(title=title, content=content, tags=tag_objs)
 
 

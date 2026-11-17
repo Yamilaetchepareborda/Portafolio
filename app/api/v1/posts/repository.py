@@ -1,8 +1,8 @@
-from math import ceil
 from typing import Optional, List, Tuple
 from sqlalchemy import select, func
 from sqlalchemy.orm import Session, selectinload, joinedload
 from app.models import PostORM, TagORM, AuthorORM
+from app.services.pagination import paginate_query
 
 
 class PostRepository:
@@ -19,26 +19,15 @@ class PostRepository:
         if query:
             results = results.where(PostORM.title.ilike(f"%{query}%"))
 
-        total = self.db.scalar(select(func.count()).select_from(
-            results.subquery())) or 0
-        if total == 0:
-            return 0, []
-
-        current_page = min(page, max(1, ceil(total/per_page)))
-
-        order_col = PostORM.id if order_by == "id" else func.lower(
-            PostORM.title)
-
-        results = results.order_by(
-            order_col.asc() if direction == "asc" else order_col.desc())
-        # results = sorted(
-        #     results, key=lambda post: post[order_by], reverse=(direction == "desc"))
-
-        start = (current_page - 1) * per_page
-        items = self.db.execute(results.limit(
-            per_page).offset(start)).scalars().all()
-
-        return total, items
+        # Paginación global (app/services/pagination.py): el total se cuenta
+        # sobre la consulta filtrada.
+        page_data = paginate_query(
+            self.db, PostORM, base_query=results, page=page, per_page=per_page,
+            order_by=order_by, direction=direction,
+            allowed_order={"id": PostORM.id,
+                           "title": func.lower(PostORM.title)},
+        )
+        return page_data["total"], page_data["items"]
 
     def by_tags(self, tags: List[str]) -> List[PostORM]:
         normalized_tag_names = [tag.strip().lower()
@@ -75,9 +64,9 @@ class PostRepository:
         return author_obj
 
     def ensure_tag(self, name: str) -> TagORM:
-
+        name = name.strip().lower()
         tag_obj = self.db.execute(
-            select(TagORM).where(TagORM.name.ilike(name))).scalar_one_or_none()
+            select(TagORM).where(func.lower(TagORM.name) == name)).scalar_one_or_none()
 
         if tag_obj:
             return tag_obj

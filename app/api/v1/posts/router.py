@@ -13,6 +13,23 @@ from app.services.file_storage import save_uploaded_image
 router = APIRouter(prefix="/posts", tags=["posts"])
 
 
+def split_tag_names(tags) -> List[str]:
+    """Fix del bug de tags con FormData.
+
+    Swagger (y cualquier formulario) puede mandar los tags como un único
+    string "python, fastapi". Se separa por comas, se normaliza con
+    strip().lower() y se eliminan duplicados conservando el orden.
+    """
+    names: List[str] = []
+    for tag in tags or []:
+        raw = tag.name if hasattr(tag, "name") else str(tag)
+        for part in raw.split(","):
+            name = part.strip().lower()
+            if name and name not in names:
+                names.append(name)
+    return names
+
+
 @router.get("", response_model=PaginatedPost)
 def list_posts(
     text: Optional[str] = Query(
@@ -89,7 +106,7 @@ def get_post(post_id: int = Path(
     ge=1,
     title="ID del post",
     description="Identificador entero del post. Debe ser mayor a 1",
-    example=1
+    examples=[1]
 ), include_content: bool = Query(default=True, description="Incluir o no el contenido"), db: Session = Depends(get_db)):
 
     repository = PostRepository(db)
@@ -118,7 +135,7 @@ def create_post(post: Annotated[PostCreate, Depends(PostCreate.as_form)], image:
             title=post.title,
             content=post.content,
             author=user,
-            tags=[tag.model_dump() for tag in post.tags],
+            tags=[{"name": name} for name in split_tag_names(post.tags)],
             image_url=image_url
         )
         db.commit()
@@ -170,7 +187,3 @@ def delete_post(post_id: int, db: Session = Depends(get_db), user=Depends(get_cu
         raise HTTPException(
             status_code=500, detail="Error al eliminar el post")
 
-
-@router.get("/secure")
-def secure_endpoint(token: str = Depends(oauth2_scheme)):
-    return {"message": "Acceso autorizado", "token": token}
