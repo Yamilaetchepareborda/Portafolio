@@ -3,6 +3,7 @@ from sqlalchemy import select, func
 from sqlalchemy.orm import Session, selectinload
 from app.models import CategoryORM, PostORM, TagORM, UserORM
 from app.services.pagination import paginate_query
+from app.utils.slugify_utils import ensure_unique_slug
 
 
 class PostRepository:
@@ -12,6 +13,11 @@ class PostRepository:
     def get(self, post_id: int) -> Optional[PostORM]:
         post_find = select(PostORM).where(PostORM.id == post_id)
         return self.db.execute(post_find).scalar_one_or_none()
+
+    def get_by_slug(self, slug: str) -> Optional[PostORM]:
+        return self.db.execute(
+            select(PostORM).where(PostORM.slug == slug.strip().lower())
+        ).scalar_one_or_none()
 
     def filtered_query(self, query: Optional[str] = None,
                        tag: Optional[str] = None,
@@ -80,7 +86,10 @@ class PostRepository:
                     tags: List[dict], image_url: Optional[str],
                     repo_url: Optional[str] = None,
                     category_id: Optional[int] = None) -> PostORM:
-        post = PostORM(title=title, content=content, image_url=image_url,
+        # El slug lo genera el repositorio a partir del título; si ya existe
+        # prueba -2, -3, etc. No cambia al editar el post (URL estable).
+        post = PostORM(title=title, slug=ensure_unique_slug(self.db, title),
+                       content=content, image_url=image_url,
                        repo_url=repo_url, user=user, category_id=category_id)
         for tag in tags:
             tag_obj = self.ensure_tag(tag["name"])

@@ -25,6 +25,9 @@ class PostORM(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
     title: Mapped[str] = mapped_column(String(100), nullable=False, index=True)
+    # Se genera solo, a partir del título, en el repositorio (ensure_unique_slug).
+    slug: Mapped[str] = mapped_column(
+        String(160), unique=True, index=True, nullable=False)
     content: Mapped[str] = mapped_column(Text, nullable=False)
     image_url: Mapped[Optional[str]] = mapped_column(String(300), nullable=True)
     # Link al repositorio (botón "Ver en GitHub" en los proyectos).

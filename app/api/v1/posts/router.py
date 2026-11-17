@@ -94,6 +94,23 @@ def filter_by_tags(
     return repository.by_tags(tags)
 
 
+@router.get("/post/{slug}", response_model=Union[PostPublic, PostSummary],
+            response_description="Post encontrado por slug")
+def get_post_by_slug(
+    slug: str = Path(..., min_length=1, max_length=160,
+                     examples=["mi-primer-post-con-fastapi"]),
+    include_content: bool = Query(default=True, description="Incluir o no el contenido"),
+    db: Session = Depends(get_db),
+):
+    post = PostRepository(db).get_by_slug(slug)
+    if not post:
+        raise HTTPException(status_code=404, detail="Post no encontrado")
+
+    if include_content:
+        return PostPublic.model_validate(post, from_attributes=True)
+    return PostSummary.model_validate(post, from_attributes=True)
+
+
 @router.get("/{post_id}", response_model=Union[PostPublic, PostSummary], response_description="Post encontrado")
 def get_post(post_id: int = Path(
     ...,
