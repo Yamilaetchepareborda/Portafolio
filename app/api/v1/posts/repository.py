@@ -1,7 +1,7 @@
 from typing import Optional, List, Tuple
 from sqlalchemy import select, func
 from sqlalchemy.orm import Session, selectinload
-from app.models import PostORM, TagORM, UserORM
+from app.models import CategoryORM, PostORM, TagORM, UserORM
 from app.services.pagination import paginate_query
 
 
@@ -14,7 +14,8 @@ class PostRepository:
         return self.db.execute(post_find).scalar_one_or_none()
 
     def filtered_query(self, query: Optional[str] = None,
-                       tag: Optional[str] = None):
+                       tag: Optional[str] = None,
+                       category: Optional[str] = None):
         """Consulta base con los filtros opcionales. La reutilizan la API y
         las páginas web, así los dos lados filtran igual."""
         results = select(PostORM)
@@ -24,15 +25,19 @@ class PostRepository:
         if tag:
             results = results.where(
                 PostORM.tags.any(func.lower(TagORM.name) == tag.strip().lower()))
+        if category:
+            results = results.where(
+                PostORM.category.has(CategoryORM.slug == category.strip().lower()))
         return results
 
     def search(self, query: Optional[str], order_by: str, direction: str,
-               page: int, per_page: int, tag: Optional[str] = None
+               page: int, per_page: int, tag: Optional[str] = None,
+               category: Optional[str] = None
                ) -> Tuple[int, List[PostORM]]:
         # Paginación global (app/services/pagination.py): el total se cuenta
         # sobre la consulta filtrada.
         page_data = paginate_query(
-            self.db, PostORM, base_query=self.filtered_query(query, tag),
+            self.db, PostORM, base_query=self.filtered_query(query, tag, category),
             page=page, per_page=per_page,
             order_by=order_by, direction=direction,
             allowed_order={"id": PostORM.id,
@@ -73,9 +78,10 @@ class PostRepository:
 
     def create_post(self, title: str, content: str, user: Optional[UserORM],
                     tags: List[dict], image_url: Optional[str],
-                    repo_url: Optional[str] = None) -> PostORM:
+                    repo_url: Optional[str] = None,
+                    category_id: Optional[int] = None) -> PostORM:
         post = PostORM(title=title, content=content, image_url=image_url,
-                       repo_url=repo_url, user=user)
+                       repo_url=repo_url, user=user, category_id=category_id)
         for tag in tags:
             tag_obj = self.ensure_tag(tag["name"])
             post.tags.append(tag_obj)

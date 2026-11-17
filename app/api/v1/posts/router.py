@@ -9,9 +9,15 @@ from app.models import UserORM
 from .schemas import (PostPublic, PaginatedPost,
                       PostCreate, PostUpdate, PostSummary, split_tag_names)
 from .repository import PostRepository
+from app.api.v1.categories.repository import CategoryRepository
 from app.services.file_storage import save_uploaded_image
 
 router = APIRouter(prefix="/posts", tags=["posts"])
+
+
+def ensure_category_exists(db: Session, category_id: Optional[int]) -> None:
+    if category_id is not None and not CategoryRepository(db).get(category_id):
+        raise HTTPException(status_code=400, detail="La categoría no existe")
 
 
 @router.get("", response_model=PaginatedPost)
@@ -43,13 +49,17 @@ def list_posts(
     direction: Literal["asc", "desc"] = Query(
         "asc", description="Dirección de orden"
     ),
+    category: Optional[str] = Query(
+        None, max_length=60, description="Filtrar por slug de categoría"),
+    tag: Optional[str] = Query(
+        None, max_length=30, description="Filtrar por nombre de tag"),
     db: Session = Depends(get_db)
 ):
     repository = PostRepository(db)
     query = query or text
 
     total, items = repository.search(
-        query, order_by, direction, page, per_page)
+        query, order_by, direction, page, per_page, tag=tag, category=category)
 
     total_pages = ceil(total/per_page) if total > 0 else 0
     current_page = 1 if total_pages == 0 else min(page, total_pages)
@@ -111,6 +121,7 @@ def create_post(post: Annotated[PostCreate, Depends(PostCreate.as_form)],
                 db: Session = Depends(get_db),
                 user: UserORM = Depends(require_role("editor"))):
     repository = PostRepository(db)
+    ensure_category_exists(db, post.category_id)
     saved = None
     try:
         if image is not None:
@@ -126,6 +137,7 @@ def create_post(post: Annotated[PostCreate, Depends(PostCreate.as_form)],
             tags=[{"name": name} for name in split_tag_names(post.tags)],
             image_url=image_url,
             repo_url=post.repo_url,
+            category_id=post.category_id,
         )
         db.commit()
         db.refresh(post)
@@ -149,6 +161,7 @@ def update_post(post_id: int, data: PostUpdate, db: Session = Depends(get_db),
     if not post:
         raise HTTPException(status_code=404, detail="Post no encontrado")
 
+    ensure_category_exists(db, data.category_id)
     try:
         updates = data.model_dump(exclude_unset=True)
         post = repository.update_post(post, updates)

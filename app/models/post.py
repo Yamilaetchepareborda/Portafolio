@@ -6,6 +6,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.core.db import Base
 
 if TYPE_CHECKING:
+    from .category import CategoryORM
     from .tag import TagORM
     from .user import UserORM
 
@@ -36,6 +37,13 @@ class PostORM(Base):
     user_id: Mapped[Optional[int]] = mapped_column(
         ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True)
     user: Mapped[Optional["UserORM"]] = relationship(
+        back_populates="posts", lazy="joined")
+
+    # Categoría opcional: si se borra la categoría, el post queda sin ella.
+    category_id: Mapped[Optional[int]] = mapped_column(
+        ForeignKey("categories.id", ondelete="SET NULL"),
+        nullable=True, index=True)
+    category: Mapped[Optional["CategoryORM"]] = relationship(
         back_populates="posts", lazy="joined")
 
     tags: Mapped[List["TagORM"]] = relationship(
