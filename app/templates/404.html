@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% import "_icons.html" as icons %}
+
+{% block title %}Página no encontrada · {{ profile.short_name }}{% endblock %}
+
+{% block content %}
+<section class="not-found">
+  <div class="container narrow">
+    <pre class="terminal mono" aria-hidden="true"><span class="muted">$</span> GET {{ request.url.path }}
+<span class="err">404</span> Not Found
+<span class="muted">→ detail:</span> "Esta página no existe (o la moví)"</pre>
+    <h1>Uy, por acá no hay nada.</h1>
+    <p class="lead">Puede que el link esté mal escrito o que el post haya cambiado de dirección.</p>
+    <div class="hero-actions">
+      <a class="btn btn-primary" href="/">{{ icons.back(16) }} Volver al inicio</a>
+      <a class="btn btn-ghost" href="/blog">Ir al blog</a>
+      <a class="btn btn-ghost" href="/proyectos">Ver proyectos</a>
+    </div>
+  </div>
+</section>
+{% endblock %}

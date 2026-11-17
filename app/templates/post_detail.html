@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% import "_icons.html" as icons %}
+{% import "_cards.html" as cards %}
+
+{% block title %}{{ post.title }} · {{ profile.short_name }}{% endblock %}
+{% block description %}{{ post.content | excerpt(155) }}{% endblock %}
+
+{% block content %}
+{% set is_project = post.category and post.category.slug == projects_slug %}
+<article class="post">
+  <header class="post-head">
+    <div class="container narrow">
+      <a class="link-back" href="{{ '/proyectos' if is_project else '/blog' }}">{{ icons.back(16) }} {{ 'Proyectos' if is_project else 'Blog' }}</a>
+      {% if post.category %}
+        <p class="mono kicker"><a href="/blog?categoria={{ post.category.slug }}">{{ post.category.name }}</a></p>
+      {% endif %}
+      <h1>{{ post.title }}</h1>
+      <p class="post-meta">
+        {% if post.user %}<span>Por <strong>{{ post.user.full_name or "Autora" }}</strong></span><span aria-hidden="true">·</span>{% endif %}
+        <time datetime="{{ post.created_at.isoformat() }}">{{ post.created_at | date_es }}</time>
+      </p>
+      {{ cards.tag_chips(post.tags) }}
+      {% if post.repo_url %}
+        <p><a class="btn btn-dark" href="{{ post.repo_url }}" target="_blank" rel="noopener">{{ icons.github(18) }} Ver en GitHub</a></p>
+      {% endif %}
+    </div>
+  </header>
+
+  <div class="container narrow">
+    <div class="post-cover">{{ cards.cover(post, "lg") }}</div>
+    <div class="prose">
+      {{ post.content | markdown }}
+    </div>
+  </div>
+</article>
+
+{% if related %}
+<section class="section section-alt">
+  <div class="container">
+    <div class="section-head">
+      <div>
+        <p class="mono kicker">// seguí leyendo</p>
+        <h2>Más en {{ post.category.name }}</h2>
+      </div>
+    </div>
+    <div class="grid grid-3">
+      {% for p in related %}{{ cards.post_card(p) }}{% endfor %}
+    </div>
+  </div>
+</section>
+{% endif %}
+{% endblock %}

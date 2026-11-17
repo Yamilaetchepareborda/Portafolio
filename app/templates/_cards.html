@@ -1,0 +1,52 @@
+{% import "_icons.html" as icons %}
+
+{% macro tag_chips(tags, limit=None, linked=True) -%}
+  {% set shown = tags[:limit] if limit else tags %}
+  <ul class="chips" aria-label="Tags">
+    {% for t in shown %}
+      <li>{% if linked %}<a class="chip" href="/blog?tag={{ t.name | urlencode }}">#{{ t.name }}</a>{% else %}<span class="chip">#{{ t.name }}</span>{% endif %}</li>
+    {% endfor %}
+    {% if limit and tags | length > limit %}<li><span class="chip chip-more">+{{ tags | length - limit }}</span></li>{% endif %}
+  </ul>
+{%- endmacro %}
+
+{% macro cover(post, size="md") -%}
+  {% if post.image_url %}
+    <img class="cover-img" src="{{ post.image_url }}" alt="" loading="lazy">
+  {% else %}
+    {# Portada generada: degradé con el color del post y las iniciales del título #}
+    <div class="cover-gen cover-{{ size }}" style="--hue: {{ post.id | hue }}" aria-hidden="true">
+      <span class="cover-word">{{ post.title.split(":")[0] }}</span>
+    </div>
+  {% endif %}
+{%- endmacro %}
+
+{% macro post_card(post) -%}
+<article class="card post-card">
+  <div class="post-card-meta mono">
+    {% if post.category %}<span class="kicker">{{ post.category.name }}</span>{% endif %}
+    <time datetime="{{ post.created_at.isoformat() }}">{{ post.created_at | date_es }}</time>
+  </div>
+  <h3 class="card-title"><a class="stretched" href="/blog/{{ post.slug }}">{{ post.title }}</a></h3>
+  <p class="card-text">{{ post.content | excerpt(150) }}</p>
+  {{ tag_chips(post.tags, 4, linked=False) }}
+</article>
+{%- endmacro %}
+
+{% macro project_card(post) -%}
+<article class="card project-card">
+  <a class="project-cover" href="/blog/{{ post.slug }}" tabindex="-1" aria-hidden="true">{{ cover(post) }}</a>
+  <div class="project-body">
+    <p class="mono kicker">{{ post.created_at | date_es(short=True) }}</p>
+    <h3 class="card-title"><a href="/blog/{{ post.slug }}">{{ post.title }}</a></h3>
+    <p class="card-text">{{ post.content | excerpt(170) }}</p>
+    {{ tag_chips(post.tags, 5, linked=False) }}
+    <div class="card-actions">
+      <a class="btn btn-ghost btn-sm" href="/blog/{{ post.slug }}">Leer más {{ icons.arrow(16) }}</a>
+      {% if post.repo_url %}
+        <a class="btn btn-dark btn-sm" href="{{ post.repo_url }}" target="_blank" rel="noopener">{{ icons.github(16) }} Ver en GitHub</a>
+      {% endif %}
+    </div>
+  </div>
+</article>
+{%- endmacro %}

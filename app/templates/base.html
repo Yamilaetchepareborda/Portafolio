@@ -1,0 +1,72 @@
+{% import "_icons.html" as icons %}
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}{{ profile.short_name }} · {{ profile.title }}{% endblock %}</title>
+  <meta name="description" content="{% block description %}Portafolio de {{ profile.full_name }}, {{ profile.title }}. {{ profile.stack_line }}.{% endblock %}">
+  <meta property="og:title" content="{{ self.title() }}">
+  <meta property="og:description" content="{{ self.description() }}">
+  <meta property="og:image" content="/static/{{ profile.avatar }}">
+  <meta name="theme-color" content="#6d28d9">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%236d28d9'/%3E%3Ctext x='50%25' y='54%25' dominant-baseline='middle' text-anchor='middle' font-family='Arial,sans-serif' font-weight='700' font-size='28' fill='white'%3E{{ profile.initials }}%3C/text%3E%3C/svg%3E">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,400..800;1,400..800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/css/styles.css">
+  <script>
+    // Aplica el tema guardado antes de pintar, para que no parpadee.
+    try {
+      var t = localStorage.getItem("tema");
+      if (t === "claro" || t === "oscuro") document.documentElement.dataset.theme = t;
+    } catch (e) {}
+  </script>
+</head>
+<body>
+  <a class="skip-link" href="#contenido">Saltar al contenido</a>
+
+  <header class="site-header">
+    <div class="container header-inner">
+      <a class="brand" href="/" aria-label="Inicio">
+        <span class="brand-mark">{{ profile.initials }}</span>
+        <span class="brand-name">{{ profile.short_name }}</span>
+      </a>
+
+      <nav class="site-nav" id="menu" aria-label="Principal">
+        <a href="/" {% if active == "home" %}aria-current="page"{% endif %}>Inicio</a>
+        <a href="/proyectos" {% if active == "projects" %}aria-current="page"{% endif %}>Proyectos</a>
+        <a href="/blog" {% if active == "blog" %}aria-current="page"{% endif %}>Blog</a>
+        <a href="/sobre-mi" {% if active == "about" %}aria-current="page"{% endif %}>Sobre mí</a>
+        <a href="/#contacto">Contacto</a>
+      </nav>
+
+      <div class="header-actions">
+        <button class="icon-btn" id="theme-toggle" type="button" aria-label="Cambiar tema claro/oscuro">
+          {{ icons.theme() }}
+        </button>
+        <button class="icon-btn menu-btn" id="menu-toggle" type="button" aria-controls="menu" aria-expanded="false" aria-label="Abrir menú">
+          {{ icons.menu() }}
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <main id="contenido">
+    {% block content %}{% endblock %}
+  </main>
+
+  <footer class="site-footer">
+    <div class="container footer-inner">
+      <p>© {{ current_year() }} {{ profile.short_name }} · Hecho con FastAPI, SQLAlchemy y Jinja2</p>
+      <div class="footer-links">
+        <a href="{{ profile.github }}" target="_blank" rel="noopener" aria-label="GitHub">{{ icons.github(18) }}</a>
+        <a href="{{ profile.linkedin }}" target="_blank" rel="noopener" aria-label="LinkedIn">{{ icons.linkedin(18) }}</a>
+        <a href="/docs" class="mono">/docs</a>
+      </div>
+    </div>
+  </footer>
+
+  <script src="/static/js/main.js" defer></script>
+</body>
+</html>

@@ -1,0 +1,89 @@
+{% extends "base.html" %}
+{% import "_icons.html" as icons %}
+{% import "_cards.html" as cards %}
+
+{% block title %}Blog · {{ profile.short_name }}{% endblock %}
+{% block description %}Apuntes de cursada y proyectos: FastAPI, SQLAlchemy, React, TypeScript y más.{% endblock %}
+
+{# blog_url(...) viene del router: arma la URL conservando los filtros actuales #}
+{% block content %}
+<section class="page-head">
+  <div class="container">
+    <p class="mono kicker">// blog</p>
+    <h1>Blog</h1>
+    <p class="lead">Lo que voy aprendiendo en la cursada y en mis proyectos.</p>
+
+    <form class="search" action="/blog" method="get" role="search">
+      <label class="sr-only" for="q">Buscar por título</label>
+      <span class="search-icon">{{ icons.search() }}</span>
+      <input id="q" name="q" type="search" value="{{ q }}" placeholder="Buscar por título…" maxlength="50" autocomplete="off">
+      {% if categoria %}<input type="hidden" name="categoria" value="{{ categoria }}">{% endif %}
+      {% if tag %}<input type="hidden" name="tag" value="{{ tag }}">{% endif %}
+      <button class="btn btn-primary btn-sm" type="submit">Buscar</button>
+    </form>
+  </div>
+</section>
+
+<section class="section section-tight">
+  <div class="container blog-layout">
+    <aside class="filters" aria-label="Filtros">
+      <div class="filter-group">
+        <h2 class="filter-title mono">Categorías</h2>
+        <ul class="chips">
+          <li><a class="chip {% if not categoria %}is-active{% endif %}" href="{{ blog_url(categoria=None) }}">Todas</a></li>
+          {% for c in categories %}
+            <li><a class="chip {% if categoria == c.slug %}is-active{% endif %}" href="{{ blog_url(categoria=c.slug) }}"{% if categoria == c.slug %} aria-current="true"{% endif %}>{{ c.name }} <span class="count">{{ c.uses }}</span></a></li>
+          {% endfor %}
+        </ul>
+      </div>
+      <div class="filter-group">
+        <h2 class="filter-title mono">Tags</h2>
+        <ul class="chips">
+          {% for t in tags %}
+            <li><a class="chip {% if tag == t.name %}is-active{% endif %}" href="{{ blog_url(tag=None if tag == t.name else t.name) }}"{% if tag == t.name %} aria-current="true"{% endif %}>#{{ t.name }} <span class="count">{{ t.uses }}</span></a></li>
+          {% endfor %}
+        </ul>
+      </div>
+    </aside>
+
+    <div class="blog-results">
+      <div class="results-bar">
+        <p class="muted" aria-live="polite">
+          {% if total == 1 %}1 post{% else %}{{ total }} posts{% endif %}
+          {% if q %} para «{{ q }}»{% endif %}
+          {% if active_category %} en {{ active_category.name }}{% endif %}
+          {% if tag %} con #{{ tag }}{% endif %}
+        </p>
+        {% if q or categoria or tag %}<a class="link-arrow" href="/blog">Limpiar filtros</a>{% endif %}
+      </div>
+
+      {% if posts %}
+        <div class="grid grid-2">
+          {% for post in posts %}{{ cards.post_card(post) }}{% endfor %}
+        </div>
+      {% else %}
+        <div class="empty">
+          <p><strong>No encontré posts con esos filtros.</strong></p>
+          <p class="muted">Probá con otra búsqueda o <a href="/blog">mirá todos los posts</a>.</p>
+        </div>
+      {% endif %}
+
+      {% if total_pages > 1 %}
+        <nav class="pagination" aria-label="Paginación">
+          {% if page > 1 %}
+            <a class="btn btn-ghost btn-sm" href="{{ blog_url(pagina=page - 1) }}" rel="prev">{{ icons.back(16) }} Anterior</a>
+          {% else %}<span class="btn btn-ghost btn-sm is-disabled" aria-disabled="true">{{ icons.back(16) }} Anterior</span>{% endif %}
+          <ol class="pages">
+            {% for n in range(1, total_pages + 1) %}
+              <li><a href="{{ blog_url(pagina=n) }}" {% if n == page %}class="is-active" aria-current="page"{% endif %}>{{ n }}</a></li>
+            {% endfor %}
+          </ol>
+          {% if page < total_pages %}
+            <a class="btn btn-ghost btn-sm" href="{{ blog_url(pagina=page + 1) }}" rel="next">Siguiente {{ icons.arrow(16) }}</a>
+          {% else %}<span class="btn btn-ghost btn-sm is-disabled" aria-disabled="true">Siguiente {{ icons.arrow(16) }}</span>{% endif %}
+        </nav>
+      {% endif %}
+    </div>
+  </div>
+</section>
+{% endblock %}

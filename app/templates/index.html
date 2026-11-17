@@ -1,0 +1,92 @@
+{% extends "base.html" %}
+{% import "_icons.html" as icons %}
+{% import "_cards.html" as cards %}
+
+{% block content %}
+<section class="hero">
+  <div class="container hero-inner">
+    <div class="hero-text">
+      <p class="mono eyebrow"><span class="dot" aria-hidden="true"></span>{{ profile.open_to }}</p>
+      <h1 class="hero-title">Hola, soy <span class="accent">{{ profile.short_name.split(" ")[0] }}</span>.</h1>
+      <p class="hero-role">{{ profile.title }}</p>
+      <p class="hero-stack mono">{{ profile.stack_line }}</p>
+      <p class="hero-bio">{{ profile.bio }}</p>
+      <div class="hero-actions">
+        <a class="btn btn-primary" href="/proyectos">Ver proyectos {{ icons.arrow() }}</a>
+        <a class="btn btn-ghost" href="{{ profile.github }}" target="_blank" rel="noopener">{{ icons.github(18) }} GitHub</a>
+        <a class="btn btn-ghost" href="{{ profile.linkedin }}" target="_blank" rel="noopener">{{ icons.linkedin(18) }} LinkedIn</a>
+      </div>
+    </div>
+    <figure class="hero-photo">
+      <img src="/static/{{ profile.avatar }}" alt="Foto de {{ profile.short_name }}" width="460" height="460">
+      <figcaption class="mono">{{ icons.pin(14) }} {{ profile.location }}</figcaption>
+    </figure>
+  </div>
+</section>
+
+{% if featured %}
+<section class="section">
+  <div class="container">
+    <div class="section-head">
+      <div>
+        <p class="mono kicker">// proyectos destacados</p>
+        <h2>Lo que vengo construyendo</h2>
+      </div>
+      <a class="link-arrow" href="/proyectos">Todos los proyectos {{ icons.arrow(16) }}</a>
+    </div>
+    <div class="grid grid-3">
+      {% for p in featured %}{{ cards.project_card(p) }}{% endfor %}
+    </div>
+  </div>
+</section>
+{% endif %}
+
+{% if latest %}
+<section class="section section-alt">
+  <div class="container">
+    <div class="section-head">
+      <div>
+        <p class="mono kicker">// blog</p>
+        <h2>Últimos posts</h2>
+      </div>
+      <a class="link-arrow" href="/blog">Ir al blog {{ icons.arrow(16) }}</a>
+    </div>
+    <div class="grid grid-3">
+      {% for post in latest %}{{ cards.post_card(post) }}{% endfor %}
+    </div>
+  </div>
+</section>
+{% endif %}
+
+<section class="section" id="contacto">
+  <div class="container">
+    <div class="contact">
+      <div>
+        <p class="mono kicker">// contacto</p>
+        <h2>¿Hablamos?</h2>
+        <p class="muted">Estoy buscando mi primera experiencia como desarrolladora. Si tenés un proyecto o una búsqueda, escribime por LinkedIn.</p>
+      </div>
+      <ul class="contact-list">
+        <li>
+          <a href="{{ profile.linkedin }}" target="_blank" rel="noopener">
+            <span class="contact-icon">{{ icons.linkedin(22) }}</span>
+            <span><strong>LinkedIn</strong><span class="mono muted">in/{{ profile.linkedin_user }}</span></span>
+          </a>
+        </li>
+        <li>
+          <a href="{{ profile.github }}" target="_blank" rel="noopener">
+            <span class="contact-icon">{{ icons.github(22) }}</span>
+            <span><strong>GitHub</strong><span class="mono muted">@{{ profile.github_user }}</span></span>
+          </a>
+        </li>
+        <li>
+          <div>
+            <span class="contact-icon">{{ icons.pin(22) }}</span>
+            <span><strong>Ubicación</strong><span class="mono muted">{{ profile.location }} · {{ profile.open_to | lower }}</span></span>
+          </div>
+        </li>
+      </ul>
+    </div>
+  </div>
+</section>
+{% endblock %}

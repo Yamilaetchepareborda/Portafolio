@@ -1,0 +1,85 @@
+{% extends "base.html" %}
+{% import "_icons.html" as icons %}
+
+{% block title %}Sobre mí · {{ profile.short_name }}{% endblock %}
+{% block description %}Formación y carrera de {{ profile.full_name }}: {{ education.degree }}, {{ education.institution }}.{% endblock %}
+
+{% block content %}
+<section class="page-head">
+  <div class="container about-head">
+    <img class="about-avatar" src="/static/{{ profile.avatar }}" alt="Foto de {{ profile.short_name }}" width="120" height="120">
+    <div>
+      <p class="mono kicker">// sobre mí</p>
+      <h1>{{ profile.full_name }}</h1>
+      <p class="lead">{{ profile.title }} · {{ profile.stack_line }} · {{ profile.open_to }}</p>
+      <p class="muted inline-icons">{{ icons.pin(16) }} {{ profile.location }}</p>
+    </div>
+  </div>
+</section>
+
+<section class="section section-tight">
+  <div class="container about-grid">
+    <div class="card edu-card">
+      <span class="edu-icon">{{ icons.cap(24) }}</span>
+      <div>
+        <p class="mono kicker">Formación</p>
+        <h2 class="h3">{{ education.degree }}</h2>
+        <p class="muted">{{ education.institution }} · {{ education.resolution }}</p>
+        <p class="badge">{{ education.status }}</p>
+      </div>
+    </div>
+
+    <div class="card final-card">
+      <p class="mono kicker">Proyecto final · {{ final_project.team }}</p>
+      <h2 class="h3">{{ final_project.name }}</h2>
+      <p class="muted">{{ final_project.summary }}</p>
+      <a class="link-arrow" href="/blog/{{ final_project.post_slug }}">Ver el proyecto {{ icons.arrow(16) }}</a>
+    </div>
+  </div>
+</section>
+
+<section class="section section-tight">
+  <div class="container">
+    <div class="section-head">
+      <div>
+        <p class="mono kicker">// carrera</p>
+        <h2>Materias aprobadas</h2>
+      </div>
+    </div>
+    <ol class="timeline">
+      {% for year in subjects %}
+        <li class="timeline-item {% if year.in_progress %}is-current{% endif %}">
+          <div class="timeline-year">
+            <span class="h3">{{ year.year }}</span>
+            <span class="mono muted">{{ year.period }}{% if year.in_progress %} · en curso{% endif %}</span>
+          </div>
+          <ul class="subject-list">
+            {% for s in year.subjects %}<li>{{ s }}</li>{% endfor %}
+          </ul>
+        </li>
+      {% endfor %}
+    </ol>
+  </div>
+</section>
+
+<section class="section section-alt">
+  <div class="container">
+    <div class="section-head">
+      <div>
+        <p class="mono kicker">// stack</p>
+        <h2>Tecnologías con las que trabajé</h2>
+      </div>
+    </div>
+    <div class="grid grid-4">
+      {% for group in skills %}
+        <div class="card skill-card">
+          <h3 class="mono kicker">{{ group.group }}</h3>
+          <ul class="chips">
+            {% for item in group["items"] %}<li><span class="chip">{{ item }}</span></li>{% endfor %}
+          </ul>
+        </div>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+{% endblock %}

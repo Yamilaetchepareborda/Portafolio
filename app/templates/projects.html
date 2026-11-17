@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% import "_cards.html" as cards %}
+
+{% block title %}Proyectos · {{ profile.short_name }}{% endblock %}
+{% block description %}Proyectos de {{ profile.short_name }}: full-stack, frontend, backend y patrones de diseño.{% endblock %}
+
+{% block content %}
+<section class="page-head">
+  <div class="container">
+    <p class="mono kicker">// proyectos</p>
+    <h1>Proyectos</h1>
+    <p class="lead">Trabajos de la carrera y personales: desde una app de escritorio en Java hasta una PWA con IA. Cada uno con su repositorio y las tecnologías que usé.</p>
+  </div>
+</section>
+
+<section class="section section-tight">
+  <div class="container">
+    {% if projects %}
+      <div class="grid grid-2">
+        {% for p in projects %}{{ cards.project_card(p) }}{% endfor %}
+      </div>
+    {% else %}
+      <p class="empty">Todavía no hay proyectos cargados. Corré <code>python -m app.seeds all</code>.</p>
+    {% endif %}
+  </div>
+</section>
+{% endblock %}
