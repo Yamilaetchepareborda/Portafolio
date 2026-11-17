@@ -5,6 +5,8 @@ from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from app.core.db import get_db
+from app.core.security import require_role
+from app.models import UserORM
 from .repository import TagRepository
 from .schemas import PaginatedTags, TagCreate, TagPublic, TagUpdate, TagWithCount
 
@@ -50,7 +52,8 @@ def get_tag(tag_id: int = Path(..., ge=1), db: Session = Depends(get_db)):
 
 
 @router.post("", response_model=TagPublic, status_code=status.HTTP_201_CREATED)
-def create_tag(data: TagCreate, db: Session = Depends(get_db)):
+def create_tag(data: TagCreate, db: Session = Depends(get_db),
+               _user: UserORM = Depends(require_role("editor"))):
     repository = TagRepository(db)
     try:
         tag = repository.create(data.name)
@@ -67,7 +70,8 @@ def create_tag(data: TagCreate, db: Session = Depends(get_db)):
 
 @router.put("/{tag_id}", response_model=TagPublic)
 def update_tag(data: TagUpdate, tag_id: int = Path(..., ge=1),
-               db: Session = Depends(get_db)):
+               db: Session = Depends(get_db),
+               _user: UserORM = Depends(require_role("editor"))):
     repository = TagRepository(db)
     tag = repository.get(tag_id)
     if not tag:
@@ -83,7 +87,8 @@ def update_tag(data: TagUpdate, tag_id: int = Path(..., ge=1),
 
 
 @router.delete("/{tag_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_tag(tag_id: int = Path(..., ge=1), db: Session = Depends(get_db)):
+def delete_tag(tag_id: int = Path(..., ge=1), db: Session = Depends(get_db),
+               _admin: UserORM = Depends(require_role("admin"))):
     repository = TagRepository(db)
     tag = repository.get(tag_id)
     if not tag:

@@ -1,7 +1,7 @@
 from typing import Optional, List, Tuple
 from sqlalchemy import select, func
-from sqlalchemy.orm import Session, selectinload, joinedload
-from app.models import PostORM, TagORM, AuthorORM
+from sqlalchemy.orm import Session, selectinload
+from app.models import PostORM, TagORM, UserORM
 from app.services.pagination import paginate_query
 
 
@@ -13,19 +13,31 @@ class PostRepository:
         post_find = select(PostORM).where(PostORM.id == post_id)
         return self.db.execute(post_find).scalar_one_or_none()
 
-    def search(self, query: Optional[str], order_by: str, direction: str, page: int, per_page: int) -> Tuple[int, List[PostORM]]:
+    def filtered_query(self, query: Optional[str] = None,
+                       tag: Optional[str] = None):
+        """Consulta base con los filtros opcionales. La reutilizan la API y
+        las páginas web, así los dos lados filtran igual."""
         results = select(PostORM)
 
         if query:
-            results = results.where(PostORM.title.ilike(f"%{query}%"))
+            results = results.where(PostORM.title.ilike(f"%{query.strip()}%"))
+        if tag:
+            results = results.where(
+                PostORM.tags.any(func.lower(TagORM.name) == tag.strip().lower()))
+        return results
 
+    def search(self, query: Optional[str], order_by: str, direction: str,
+               page: int, per_page: int, tag: Optional[str] = None
+               ) -> Tuple[int, List[PostORM]]:
         # Paginación global (app/services/pagination.py): el total se cuenta
         # sobre la consulta filtrada.
         page_data = paginate_query(
-            self.db, PostORM, base_query=results, page=page, per_page=per_page,
+            self.db, PostORM, base_query=self.filtered_query(query, tag),
+            page=page, per_page=per_page,
             order_by=order_by, direction=direction,
             allowed_order={"id": PostORM.id,
-                           "title": func.lower(PostORM.title)},
+                           "title": func.lower(PostORM.title),
+                           "created_at": PostORM.created_at},
         )
         return page_data["total"], page_data["items"]
 
@@ -38,30 +50,12 @@ class PostRepository:
 
         post_list = (
             select(PostORM)
-            .options(
-                selectinload(PostORM.tags),
-                joinedload(PostORM.author),
-            ).where(PostORM.tags.any(func.lower(TagORM.name).in_(normalized_tag_names)))
+            .options(selectinload(PostORM.tags))
+            .where(PostORM.tags.any(func.lower(TagORM.name).in_(normalized_tag_names)))
             .order_by(PostORM.id.asc())
         )
 
-        return self.db.execute(post_list).scalars().all()
-
-    def ensure_author(self, name: str, email: str) -> AuthorORM:
-
-        author_obj = self.db.execute(
-            select(AuthorORM).where(AuthorORM.email == email)
-        ).scalar_one_or_none()
-
-        if author_obj:
-            return author_obj
-
-        author_obj = AuthorORM(name=name,
-                               email=email)
-        self.db.add(author_obj)
-        self.db.flush()
-
-        return author_obj
+        return self.db.execute(post_list).scalars().unique().all()
 
     def ensure_tag(self, name: str) -> TagORM:
         name = name.strip().lower()
@@ -77,14 +71,11 @@ class PostRepository:
 
         return tag_obj
 
-    def create_post(self, title: str, content: str, author: Optional[dict], tags: List[dict], image_url: str) -> PostORM:
-        author_obj = None
-        if author:
-            author_obj = self.ensure_author(
-                author["username"], author["email"])
-
+    def create_post(self, title: str, content: str, user: Optional[UserORM],
+                    tags: List[dict], image_url: Optional[str],
+                    repo_url: Optional[str] = None) -> PostORM:
         post = PostORM(title=title, content=content, image_url=image_url,
-                       author=author_obj)
+                       repo_url=repo_url, user=user)
         for tag in tags:
             tag_obj = self.ensure_tag(tag["name"])
             post.tags.append(tag_obj)

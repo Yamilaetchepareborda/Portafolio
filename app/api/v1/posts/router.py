@@ -4,30 +4,14 @@ from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from typing import List, Optional, Union, Literal, Annotated
 from app.core.db import get_db
+from app.core.security import require_role
+from app.models import UserORM
 from .schemas import (PostPublic, PaginatedPost,
-                      PostCreate, PostUpdate, PostSummary)
+                      PostCreate, PostUpdate, PostSummary, split_tag_names)
 from .repository import PostRepository
-from app.core.security import oauth2_scheme, get_current_user
 from app.services.file_storage import save_uploaded_image
 
 router = APIRouter(prefix="/posts", tags=["posts"])
-
-
-def split_tag_names(tags) -> List[str]:
-    """Fix del bug de tags con FormData.
-
-    Swagger (y cualquier formulario) puede mandar los tags como un único
-    string "python, fastapi". Se separa por comas, se normaliza con
-    strip().lower() y se eliminan duplicados conservando el orden.
-    """
-    names: List[str] = []
-    for tag in tags or []:
-        raw = tag.name if hasattr(tag, "name") else str(tag)
-        for part in raw.split(","):
-            name = part.strip().lower()
-            if name and name not in names:
-                names.append(name)
-    return names
 
 
 @router.get("", response_model=PaginatedPost)
@@ -53,7 +37,7 @@ def list_posts(
         1, ge=1,
         description="Número de página (>=1)"
     ),
-    order_by: Literal["id", "title"] = Query(
+    order_by: Literal["id", "title", "created_at"] = Query(
         "id", description="Campo de orden"
     ),
     direction: Literal["asc", "desc"] = Query(
@@ -122,7 +106,10 @@ def get_post(post_id: int = Path(
 
 
 @router.post("", response_model=PostPublic, response_description="Post creado (OK)", status_code=status.HTTP_201_CREATED)
-def create_post(post: Annotated[PostCreate, Depends(PostCreate.as_form)], image: Optional[UploadFile] = File(None), db: Session = Depends(get_db), user=Depends(get_current_user)):
+def create_post(post: Annotated[PostCreate, Depends(PostCreate.as_form)],
+                image: Optional[UploadFile] = File(None),
+                db: Session = Depends(get_db),
+                user: UserORM = Depends(require_role("editor"))):
     repository = PostRepository(db)
     saved = None
     try:
@@ -134,9 +121,11 @@ def create_post(post: Annotated[PostCreate, Depends(PostCreate.as_form)], image:
         post = repository.create_post(
             title=post.title,
             content=post.content,
-            author=user,
+            user=user,
+            # Fix de FormData: "python, fastapi" -> ["python", "fastapi"]
             tags=[{"name": name} for name in split_tag_names(post.tags)],
-            image_url=image_url
+            image_url=image_url,
+            repo_url=post.repo_url,
         )
         db.commit()
         db.refresh(post)
@@ -151,7 +140,8 @@ def create_post(post: Annotated[PostCreate, Depends(PostCreate.as_form)], image:
 
 
 @router.put("/{post_id}", response_model=PostPublic, response_description="Post actualizado", response_model_exclude_none=True)
-def update_post(post_id: int, data: PostUpdate, db: Session = Depends(get_db), user=Depends(get_current_user)):
+def update_post(post_id: int, data: PostUpdate, db: Session = Depends(get_db),
+                user: UserORM = Depends(require_role("editor"))):
 
     repository = PostRepository(db)
     post = repository.get(post_id)
@@ -165,6 +155,10 @@ def update_post(post_id: int, data: PostUpdate, db: Session = Depends(get_db), u
         db.commit()
         db.refresh(post)
         return post
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(
+            status_code=409, detail="El título ya existe, prueba con otro")
     except SQLAlchemyError:
         db.rollback()
         raise HTTPException(
@@ -172,7 +166,8 @@ def update_post(post_id: int, data: PostUpdate, db: Session = Depends(get_db), u
 
 
 @router.delete("/{post_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_post(post_id: int, db: Session = Depends(get_db), user=Depends(get_current_user)):
+def delete_post(post_id: int, db: Session = Depends(get_db),
+                user: UserORM = Depends(require_role("admin"))):
     repository = PostRepository(db)
     post = repository.get(post_id)
 
@@ -186,4 +181,3 @@ def delete_post(post_id: int, db: Session = Depends(get_db), user=Depends(get_cu
         db.rollback()
         raise HTTPException(
             status_code=500, detail="Error al eliminar el post")
-

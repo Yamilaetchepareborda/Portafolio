@@ -1,6 +1,26 @@
-from typing import Optional, List, Union, Literal, Annotated
-from pydantic import BaseModel, Field, field_validator, EmailStr, ConfigDict
+from datetime import datetime
+from typing import Optional, List, Literal, Annotated
+from pydantic import BaseModel, Field, field_validator, ConfigDict
 from fastapi import Form
+
+from app.api.v1.users.schemas import UserPublic
+
+
+def split_tag_names(tags) -> List[str]:
+    """Fix del bug de tags con FormData.
+
+    Swagger (y cualquier formulario) puede mandar los tags como un único
+    string "python, fastapi". Se separa por comas, se normaliza con
+    strip().lower() y se eliminan duplicados conservando el orden.
+    """
+    names: List[str] = []
+    for tag in tags or []:
+        raw = tag.name if hasattr(tag, "name") else str(tag)
+        for part in raw.split(","):
+            name = part.strip().lower()
+            if name and name not in names:
+                names.append(name)
+    return names
 
 
 class Tag(BaseModel):
@@ -10,19 +30,14 @@ class Tag(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 
-class Author(BaseModel):
-    name: str
-    email: EmailStr
-
-    model_config = ConfigDict(from_attributes=True)
-
-
 class PostBase(BaseModel):
     title: str
     content: str
     tags: Optional[List[Tag]] = Field(default_factory=list)  # []
-    author: Optional[Author] = None
+    user: Optional[UserPublic] = None
     image_url: Optional[str] = None
+    repo_url: Optional[str] = None
+    created_at: Optional[datetime] = None
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -38,10 +53,11 @@ class PostCreate(BaseModel):
     content: Optional[str] = Field(
         default="Contenido no disponible",
         min_length=10,
-        description="Contenido del post (mínimo 10 caracteres)",
+        description="Contenido del post (mínimo 10 caracteres). Acepta Markdown.",
         examples=["Este es un contenido válido porque tiene 10 caracteres o más"]
     )
     tags: List[Tag] = Field(default_factory=list)  # []
+    repo_url: Optional[str] = Field(None, max_length=300)
 
     @field_validator("title")
     @classmethod
@@ -55,23 +71,21 @@ class PostCreate(BaseModel):
         cls,
         title: Annotated[str, Form(min_length=3)],
         content: Annotated[str, Form(min_length=10)],
-        tags: Annotated[Optional[List[str]], Form()] = None,
+        tags: Annotated[Optional[List[str]], Form(
+            description="Uno o varios tags. También acepta \"python, fastapi\"")] = None,
+        repo_url: Annotated[Optional[str], Form(max_length=300)] = None,
     ):
         # Con FormData los tags pueden llegar como "python, fastapi":
         # se separan antes de validar cada uno.
-        names = []
-        for raw in tags or []:
-            for part in raw.split(","):
-                name = part.strip().lower()
-                if name and name not in names:
-                    names.append(name)
-        tag_objs = [Tag(name=t) for t in names]
-        return cls(title=title, content=content, tags=tag_objs)
+        tag_objs = [Tag(name=t) for t in split_tag_names(tags)]
+        return cls(title=title, content=content, tags=tag_objs,
+                   repo_url=repo_url or None)
 
 
 class PostUpdate(BaseModel):
     title: Optional[str] = Field(None, min_length=3, max_length=100)
-    content: Optional[str] = None
+    content: Optional[str] = Field(None, min_length=10)
+    repo_url: Optional[str] = Field(None, max_length=300)
 
 
 class PostPublic(PostBase):
@@ -94,7 +108,7 @@ class PaginatedPost(BaseModel):
     total_pages: int
     has_prev: bool
     has_next: bool
-    order_by: Literal["id", "title"]
+    order_by: Literal["id", "title", "created_at"]
     direction: Literal["asc", "desc"]
     search: Optional[str] = None
     items: List[PostPublic]

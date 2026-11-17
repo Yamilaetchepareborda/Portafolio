@@ -1,13 +1,13 @@
 from __future__ import annotations
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import List, Optional, TYPE_CHECKING
 from sqlalchemy import Integer, String, Text, DateTime, UniqueConstraint, ForeignKey, Table, Column
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.core.db import Base
 
 if TYPE_CHECKING:
-    from .author import AuthorORM
     from .tag import TagORM
+    from .user import UserORM
 
 post_tags = Table(
     "post_tags",
@@ -25,13 +25,18 @@ class PostORM(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
     title: Mapped[str] = mapped_column(String(100), nullable=False, index=True)
     content: Mapped[str] = mapped_column(Text, nullable=False)
-    image_url = mapped_column(String(300), nullable=True)
+    image_url: Mapped[Optional[str]] = mapped_column(String(300), nullable=True)
+    # Link al repositorio (botón "Ver en GitHub" en los proyectos).
+    repo_url: Mapped[Optional[str]] = mapped_column(String(300), nullable=True)
     created_at: Mapped[datetime] = mapped_column(
-        DateTime, default=datetime.utcnow)
+        DateTime, default=lambda: datetime.now(timezone.utc))
 
-    author_id: Mapped[Optional[int]] = mapped_column(ForeignKey("authors.id"))
-    author: Mapped[Optional["AuthorORM"]] = relationship(
-        back_populates="posts")
+    # El post queda vinculado al usuario real que lo creó (reemplaza a
+    # AuthorORM). Si se borra el usuario, el post se conserva sin autor.
+    user_id: Mapped[Optional[int]] = mapped_column(
+        ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True)
+    user: Mapped[Optional["UserORM"]] = relationship(
+        back_populates="posts", lazy="joined")
 
     tags: Mapped[List["TagORM"]] = relationship(
         secondary=post_tags,
